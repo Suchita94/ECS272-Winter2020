@@ -16,81 +16,34 @@ def output():
 @app.route("/loadData")
 def output1():
     df = pd.read_json('input/artifacts.json')
-    return json.dumps(processData(df))
+    df = processData(df)
+    return json.dumps(arcData(df))
 
+@app.route("/getRepos")
+def getRepos():
+    df = pd.read_json('input/artifacts.json')
+    return json.dumps(scatterData(processData(df)))
+    
+    # return json.dumps(scatterData(processData(df)))
 
-def processData(df):
-    df.drop(['_etag'], axis=1, inplace=True)
-    df.drop(['repo_mined_version'], axis=1, inplace=True)
-    df.drop(['repo_watchers'], axis=1, inplace=True)
-    df.drop(['repo_members'], axis=1, inplace=True)
-    df.drop(['merged_at'], axis=1, inplace=True)
-    df.drop(['base_branch'], axis=1, inplace=True)
-    df.drop(['branch'], axis=1, inplace=True)
-    df.drop(['diff_url'], axis=1, inplace=True)
-    df.drop(['_created'], axis=1, inplace=True)
-    df.drop(['filtered_reason'], axis=1, inplace=True)
-    df.drop(['image_tag'], axis=1, inplace=True)
-    df.drop(['match'], axis=1, inplace=True)
-    df.drop(['_links'], axis=1, inplace=True)
-    df.drop(['_id'], axis=1, inplace=True)
-    jsonDf = pd.io.json.json_normalize(df.classification)
-    df = df.assign(test=jsonDf['test'], build=jsonDf['build'],
-                   code=jsonDf['code'], exceptions=jsonDf['exceptions'], )
-    jsonDf = pd.io.json.json_normalize(df.metrics)
-    df = df.assign(
-        changes=jsonDf['changes'], deletions=jsonDf['deletions'], additions=jsonDf['additions'])
-    df.drop(['classification'], axis=1, inplace=True)
-    df.drop(['metrics'], axis=1, inplace=True)
-    jsonDf = pd.io.json.json_normalize(df.current_status)
-    df = df.assign(
-        status_time_stamp=jsonDf['time_stamp'], status=jsonDf['status'])
-    df.drop(['current_status'], axis=1, inplace=True)
-    df['reproduced'] = df['reproduced'].astype('bool')
-    jsonDf = pd.io.json.json_normalize(df.failed_job)
-    df = df.assign(os=jsonDf['config.os'])
-    df['repo_commits'].replace(r'^\s*$', np.nan, regex=True, inplace=True)
-    df['repo_commits'].fillna(0, inplace=True)
-    df['repo_commits'] = df['repo_commits'].astype('int')
-    df['repo_commits'].fillna(0, inplace=True)
-    # dat = []
-    # for index, row in df.iterrows():
-    #     found = False
-    #     for d in dat:
-    #         if d['name'] == row['lang']:
-    #             found = True
-    #             foundChild = False
-    #             for c in d['children']:
-    #                 if c['name'] == row['build_system']:
-    #                     foundChild = True
-    #                     c['value'] = c['value'] + 1
-    #             if not foundChild:
-    #                 newChild = {}
-    #                 newChild['name'] = row['build_system']
-    #                 newChild['value'] = 1
-    #                 d['children'].append(newChild)
-    #     if not found:
-    #         newD = {}
-    #         newD['name'] = row['lang']
-    #         newD['children'] = []
-    #         newChild = {}
-    #         newChild['name'] = row['build_system']
-    #         newChild['value'] = 1
-    #         newD['children'].append(newChild)
-    #         dat.append(newD)
-    for i, row in df.iterrows():
-        patch = ''
-        if row['build'] == 'Yes' or row['build'] == 'No':
-            patch = 'Build'
-        if row['test'] == 'Yes' or row['test'] == 'No':
-            if len(patch) > 0:
-                patch = patch + '+'
-            patch = patch + 'Test'
-        if row['code'] == 'Yes' or row['code'] == 'No':
-            if len(patch) > 0:
-                patch = patch + '+'
-            patch = patch + 'Code'
-        df.at[i, 'patch_loc'] = patch
+def scatterData(df):
+    df2 = df.drop(['exceptions','reproduce_successes', '_updated', 'changes', 'deletions', 'additions', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
+    scatData = []
+    print(df2.head(1))
+    for i, row in df2.iterrows():
+        newEntry = {}
+        newEntry['repo'] = row['repo']
+        newEntry['lang'] = row['lang']
+        newEntry['build_system'] = row['build_system']
+        newEntry['repo_commits'] = row['repo_commits']
+        newEntry['test_framework'] = row['test_framework']
+        newEntry['status'] = row['status']
+        newEntry['os'] = row['os']
+        newEntry['patch_loc'] = row['patch_loc']
+        scatData.append(newEntry)
+    return scatData
+
+def arcData(df):
     df2 = df.drop(['reproduce_successes', '_updated', 'changes', 'deletions', 'additions', 'repo_commits', 'repo', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
     pivot = df2.pivot_table( values='exceptions', index=['lang', 'os', 'patch_loc', 'status', 'test_framework'], columns='build_system', aggfunc='count', fill_value=0)
     pivot_dict = pivot.to_dict('index')
@@ -129,8 +82,58 @@ def processData(df):
                         iterDat.append(newChild)
                     else:
                         foundChildLeaf['value'] = foundChildLeaf['value'] + val[leaf]
-            
     return dat
+
+def processData(df):
+    df.drop(['_etag'], axis=1, inplace=True)
+    df.drop(['repo_mined_version'], axis=1, inplace=True)
+    df.drop(['repo_watchers'], axis=1, inplace=True)
+    df.drop(['repo_members'], axis=1, inplace=True)
+    df.drop(['merged_at'], axis=1, inplace=True)
+    df.drop(['base_branch'], axis=1, inplace=True)
+    df.drop(['branch'], axis=1, inplace=True)
+    df.drop(['diff_url'], axis=1, inplace=True)
+    df.drop(['_created'], axis=1, inplace=True)
+    df.drop(['filtered_reason'], axis=1, inplace=True)
+    df.drop(['image_tag'], axis=1, inplace=True)
+    df.drop(['match'], axis=1, inplace=True)
+    df.drop(['_links'], axis=1, inplace=True)
+    df.drop(['_id'], axis=1, inplace=True)
+    jsonDf = pd.io.json.json_normalize(df.classification)
+    df = df.assign(test=jsonDf['test'], build=jsonDf['build'],
+                   code=jsonDf['code'], exceptions=jsonDf['exceptions'], )
+    jsonDf = pd.io.json.json_normalize(df.metrics)
+    df = df.assign(
+        changes=jsonDf['changes'], deletions=jsonDf['deletions'], additions=jsonDf['additions'])
+    df.drop(['classification'], axis=1, inplace=True)
+    df.drop(['metrics'], axis=1, inplace=True)
+    jsonDf = pd.io.json.json_normalize(df.current_status)
+    df = df.assign(
+        status_time_stamp=jsonDf['time_stamp'], status=jsonDf['status'])
+    df.drop(['current_status'], axis=1, inplace=True)
+    df['reproduced'] = df['reproduced'].astype('bool')
+    jsonDf = pd.io.json.json_normalize(df.failed_job)
+    df = df.assign(os=jsonDf['config.os'])
+    df['repo_commits'].replace(r'^\s*$', np.nan, regex=True, inplace=True)
+    df['repo_commits'].fillna(0, inplace=True)
+    df['repo_commits'] = df['repo_commits'].astype('int')
+    df['repo_commits'].fillna(0, inplace=True)
+
+    for i, row in df.iterrows():
+        patch = ''
+        if row['build'] == 'Yes' or row['build'] == 'No':
+            patch = 'Build'
+        if row['test'] == 'Yes' or row['test'] == 'No':
+            if len(patch) > 0:
+                patch = patch + '+'
+            patch = patch + 'Test'
+        if row['code'] == 'Yes' or row['code'] == 'No':
+            if len(patch) > 0:
+                patch = patch + '+'
+            patch = patch + 'Code'
+        df.at[i, 'patch_loc'] = patch   
+    return df
+            
     
 
 if __name__ == "__main__":
