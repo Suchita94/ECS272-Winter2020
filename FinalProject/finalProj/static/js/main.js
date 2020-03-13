@@ -3,6 +3,8 @@ var height = 1500;
 var radius = Math.min(width, height) / 2;
 var vis;
 var activeClick = false;
+var padding = 2;
+var maxRadius = 1000;
 window.onload = function () { // calls this on loading index.html
     $.get("loadData", function (data) { //first api call
         //origData = JSON.parse(data);
@@ -124,7 +126,7 @@ function createVisualization(arcData, scatterData) {
     // Given a node in a partition layout, return an array of all of its ancestor
     // nodes, highest first, but excluding the root.
     
-    processScatter(origNodes, scatterData);
+    setTimeout(processScatter(origNodes, scatterData), 10);
 }
 
 function highlightHierarchy(d) {
@@ -198,10 +200,17 @@ function getChildren(node, searchStr, childArr) {
 
 function processScatter(nodes, scatterData) {
     bubbleData = [];
-    
-    for (let loopVar = 4; loopVar < scatterData.length; loopVar++) {
+    repos = []
+    for (let loopVar = 0; loopVar < scatterData.length; loopVar++) {
+        if (repos.includes(scatterData[loopVar]['repo'])) {
+            continue;
+        }
         let newDat = {};
+
         newDat['repo'] = scatterData[loopVar]['repo'];
+
+        repos.push(scatterData[loopVar]['repo']);
+
         newDat['repo_commits'] = scatterData[loopVar]['repo_commits'];
         let centroid = null;
         let highestNode = null;
@@ -215,9 +224,6 @@ function processScatter(nodes, scatterData) {
         let childArr = getChildren(nodedepth1, searchStr, []);
         
         if (childArr == undefined) {
-            console.log("not found");
-            console.log(loopVar);
-            console.log(scatterData[loopVar]);
             continue;
         }
         let nodedepth2 = childArr[0];
@@ -249,36 +255,146 @@ function processScatter(nodes, scatterData) {
             centroid = nodedepth6.centroid;
             highestNode = nodedepth6;
         }
-        if (centroid[1] > 0) {
-            centroid[1] = centroid[1] - 275;
-        } else {
-            centroid[1] = centroid[1] + 275;
-        }
+        x = centroid[0];
+        y = centroid[1];
+        theta = Math.atan(y/x);
+        r = Math.sqrt(Math.pow(x, 2)+ Math.pow(y, 2));
+        y = -(0.7 * r) * Math.sin(theta);
+        x = -(0.7 * r) * Math.cos(theta);
+
+        centroid[0] = x;
+        centroid[1] = y;
+        newDat['idealcx'] = centroid[0];
+        newDat['idealcy'] = centroid[1];
+        newDat['x'] = centroid[0];
+        newDat['y'] = centroid[1];
         newDat['centroid'] = centroid;
         newDat['highestNode'] = highestNode;
-        bubbleData.push(newDat)
+        newDat['idealradius'] = Math.pow(scatterData[loopVar]['repo_commits'], 0.4) == 0? 20:Math.pow(scatterData[loopVar]['repo_commits'], 0.4);
+        newDat['collide'] = 0;
+        bubbleData.push(newDat);
+        
     }
-    var scat = d3.select("#container").selectAll("circle")
-                        .data(bubbleData).enter()
-                        .append("circle")
-                        .attr("cx", function(d){
-                            return d.centroid[0];
-                        })
-                        .attr("cy", function(d) {
-                            return d.centroid[1];
-                        })
-                        .attr("r", function(d) {
-                            return Math.pow(d.repo_commits, 0.4);
-                        })
-                        .style("fill", 'red')
-                        .style("stroke", 'black')
-                        .on("click", function(d) {
-                            
-                            activeClick = true;
-                            highlightHierarchy(highestNode);
-                            
-                        });
+    console.log(bubbleData.length);
+    // var scat = d3.select("#container").selectAll("circle")
+    //                     .data(bubbleData).enter()
+    //                     .append("circle")
+    //                     .attr("cx", function(d,i){
+    //                         return d.centroid[0];
+    //                     })
+    //                     .attr("cy", function(d, i) {
+    //                         return d.centroid[1];
+    //                     })
+    //                     .attr("r", function(d) {
+    //                         console.log(d.repo_commits);
+    //                         return Math.pow(d.repo_commits, 0.4) == 0? 20:Math.pow(d.repo_commits, 0.4);
+    //                     })
+    //                     .style("fill", 'red')
+    //                     .style("stroke", 'black')
+    
 
+    var force = d3.layout.force()
+                    .nodes(bubbleData)
+                    .size([width, height])
+                    //.center([width/2, height/2])
+                    .gravity(0)
+                    .charge(0)
+                    .on("tick", tick)
+		            .alpha(0.990)
+                    .start();
+    /**
+ * On a tick, apply custom gravity, collision detection, and node placement.
+ */
+var count = 0;
+function tick(e) {
+    for ( i = 0; i < bubbleData.length; i++ ) {
+      var node = bubbleData[i];
+      console.log(count++);
+      /*
+       * Animate the radius via the tick.
+       *
+       * Typically this would be performed as a transition on the SVG element itself,
+       * but since this is a static force layout, we must perform it on the node.
+       */
+    
+       node.radius = node.idealradius - (node.idealradius * e.alpha * 10);
+     
+      node = gravity(.2 * e.alpha)(node);
+      node = collide(.5)(node);
+      node.cx = node.x;
+      node.cy = node.y;
+    }
+  }
+
+  /**
+ * On a tick, move the node towards its desired position,
+ * with a preference for accuracy of the node's x-axis placement
+ * over smoothness of the clustering, which would produce inaccurate data presentation.
+ */
+function gravity(alpha) {
+    return function(d) {
+
+      d.y += (d.idealcy - d.y) * alpha;
+      d.x += (d.idealcx - d.x) * alpha * 3;
+      return d;
+    };
+  }
+
+/**
+ * On a tick, resolve collisions between nodes.
+ */
+function collide(alpha) {
+    var quadtree = d3.geom.quadtree(nodes);
+    return function(d) {
+      var r = d.radius + maxRadius + padding,
+          nx1 = d.x - r,
+          nx2 = d.x + r,
+          ny1 = d.y - r,
+          ny2 = d.y + r;
+      quadtree.visit(function(quad, x1, y1, x2, y2) {
+        if (quad.point && (quad.point !== d)) {
+          var x = d.x - quad.point.x,
+              y = d.y - quad.point.y,
+              l = Math.sqrt(x * x + y * y),
+              r = d.radius + quad.point.radius + padding;
+          if (l < r) {
+                l = (l - r) / l * alpha;
+                d.x -= x *= l;
+                d.y -= y *= l;
+                quad.point.x += x;
+                quad.point.y += y;
+            
+          }
+         
+        }
+        return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+      });
+      return d;
+    };
+  }
+
+  force.start();
+  for (var i = 2; i > 0; --i) 
+  {
+      console.log("yaaay")
+      force.tick();
+  }
+  force.stop();
+
+  var circle = d3.select("#container").selectAll("circle")
+    .data(bubbleData)
+  .enter().append("circle")
+    .style("fill", function(d) { return 'red'; })
+    .attr("cx", function(d) { return d.x} )
+    .attr("cy", function(d) { return d.y} )
+    .attr("r", function(d) { return d.radius} )
+    .style("stroke", 'black')
+    .on("click", function(d) {
+                            
+        activeClick = true;
+        highlightHierarchy(d.highestNode);
+        
+    });
 
 }
 
