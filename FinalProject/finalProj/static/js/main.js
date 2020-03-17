@@ -1,5 +1,5 @@
-var width = 1700;
-var height = 1700;
+var width = 1650;
+var height = 1650;
 var radius = 750;
 var vis;
 var activeClick = false;
@@ -158,12 +158,13 @@ function highlightHierarchy(d) {
         }
 
     }
-    oldCrumbs = $('#breadcrumbs').html();
-    if (oldCrumbs =='No Selection') {
-        $('#breadcrumbs').html(crumbStr);
-    } else {
-        $('#breadcrumbs').html(oldCrumbs + '<br>' + crumbStr);
-    }
+    $('#breadcrumbs').html(crumbStr);
+    // oldCrumbs = $('#breadcrumbs').html();
+    // if (oldCrumbs =='No Selection') {
+        
+    // } else {
+    //     $('#breadcrumbs').html(oldCrumbs + '<br>' + crumbStr);
+    // }
     // Fade all the segments.
     d3.selectAll("path")
         .style("opacity", 0.3)
@@ -706,12 +707,18 @@ function checkCollision(newDat, pos, scatterData) {
 }
 
 function search() {
+    d3.selectAll('.dust')
+                    .style('opacity', 0.3);
     let searchStr = $('#searchRepo')[0].value;
     let found = false;
     d3.selectAll('circle').each(function() {
         let currCircle = d3.select(this);
         if (currCircle.attr("id") == searchStr) {
             currCircle.style("fill", selectBubbleColor);
+            console.log(currCircle.data());
+            let d = currCircle.data()[0];
+            highlightHierarchy(d['highestNode']);
+            d3.selectAll('path.spoke' + d.pos).style('opacity', 1);
             found = true;
         } else {
             currCircle.style("fill", selectBubbleColorUnselected);
