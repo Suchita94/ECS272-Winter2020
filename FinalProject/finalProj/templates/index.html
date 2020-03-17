@@ -105,11 +105,13 @@
             color: antiquewhite;
             padding-top: 5%;
             margin-top: 1%;
+            
         }
 
         div.panels {
             min-width: 700px;
             max-width: 700px;
+            border: 1px solid #313639; border-radius: 80px;
         }
     </style>
 </head>
@@ -122,17 +124,16 @@
         </div>
         <div class="col-lg-4">
             <div class="row" id="controls">
-                <div class="panel panel-info">
-                    <div class="panel-heading" style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                <div class="panel " style="background-color: rgb(105, 109, 105);opacity: 1;border: 1px solid #313639; border-radius: 8px;">
+                    <div class="panel-heading" style="padding:1.5%" >
                         <b>Selected
                             Segments</b></div>
-                    <div class="panel-body" id="breadcrumbs"
-                        style="background-color: rgb(105, 109, 105);opacity: 1; padding-top:1%;padding-left:1%;margin-bottom:-1%;">
+                    <div class="panel-body" id="breadcrumbs" style="padding:1.5%">
                     </div>
                 </div>
             </div>
             <div class="row" id="controls">
-                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%; border: 1px solid #313639; border-radius: 8px;">
                     <label for="bubbleColorPicker" style="padding:1.5%;"><b>Choose Color for Selected
                             Repositories</b></label>
                     <input type='color' id="bubbleColorPicker" onchange="changeColorBubbles()" value='#00ff00'
@@ -144,7 +145,7 @@
                 </form>
             </div>
             <div class="row" id="controls">
-                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%; border: 1px solid #313639; border-radius: 8px;">
                     <label for="bubbleColorPicker" style="padding:1.5%;"><b>Search</b></label>
                     <input type="text" placeholder="Search By Repositories.." style="width: 600px; height: 50px;" id="searchRepo">
                     <button type="button" style="cursor: pointer; margin-left: 50%;" onclick="search()">Submit</button>
