@@ -13,13 +13,13 @@ def output():
     return render_template("index.html")
 
 
-@app.route("/loadData")
+@app.route("/getArcData")
 def output1():
     df = pd.read_json('input/artifacts.json')
     df = processData(df)
     return json.dumps(arcData(df))
 
-@app.route("/getRepos")
+@app.route("/getRepoData")
 def getRepos():
     df = pd.read_json('input/artifacts.json')
     return json.dumps(scatterData(processData(df)))
@@ -27,7 +27,7 @@ def getRepos():
     # return json.dumps(scatterData(processData(df)))
 
 def scatterData(df):
-    df2 = df.drop(['exceptions','reproduce_successes', '_updated', 'changes', 'deletions', 'additions', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
+    df2 = df.drop(['exceptions','reproduce_successes', '_updated', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
     scatData = []
     print(df2.head(1))
     for i, row in df2.iterrows():
@@ -40,11 +40,15 @@ def scatterData(df):
         newEntry['status'] = row['status']
         newEntry['os'] = row['os']
         newEntry['patch_loc'] = row['patch_loc']
+        newEntry['changes'] = row['changes']
+        newEntry['deletions'] = row['deletions']
+        newEntry['additions'] = row['additions']
+        newEntry['diff_url'] = row['diff_url']
         scatData.append(newEntry)
     return scatData
 
 def arcData(df):
-    df2 = df.drop(['reproduce_successes', '_updated', 'changes', 'deletions', 'additions', 'repo_commits', 'repo', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
+    df2 = df.drop(['reproduce_successes','diff_url', '_updated', 'changes', 'deletions', 'additions', 'repo_commits', 'repo', 'reproduced', 'tag', 'creation_time', 'passed_job', 'failed_job', 'repo_builds', 'status_time_stamp', 'is_error_pass', 'repo_prs', 'pr_num','stability', 'reproduce_attempts', 'build', 'code', 'test'], axis = 1, inplace=False)
     pivot = df2.pivot_table( values='exceptions', index=['lang', 'os', 'patch_loc', 'status', 'test_framework'], columns='build_system', aggfunc='count', fill_value=0)
     pivot_dict = pivot.to_dict('index')
     dat = []
@@ -92,7 +96,6 @@ def processData(df):
     df.drop(['merged_at'], axis=1, inplace=True)
     df.drop(['base_branch'], axis=1, inplace=True)
     df.drop(['branch'], axis=1, inplace=True)
-    df.drop(['diff_url'], axis=1, inplace=True)
     df.drop(['_created'], axis=1, inplace=True)
     df.drop(['filtered_reason'], axis=1, inplace=True)
     df.drop(['image_tag'], axis=1, inplace=True)

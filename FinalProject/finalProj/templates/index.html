@@ -1,45 +1,158 @@
 <!DOCTYPE html>
+
 <head>
     <script src="https://d3js.org/d3.v3.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-        
-        <link rel="stylesheet" type="text/css"
-        href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
 
-        <style>
-            path {
-        stroke: white;
-        /* fill: #05668D; */
-        opacity: 0.6;
-        stroke-width: 2px;
-    }
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Open+Sans:400,600">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/lasso.js') }}"></script>
 
-    div.tooltip {
+    x
+    <style>
+        path {
+            stroke: white;
+            /* fill: #05668D; */
+            opacity: 0.6;
+            stroke-width: 2px;
+        }
+
+        div.tooltip {
             position: absolute;
             text-align: center;
-            width: 100px;
-            height: 100px;
-            padding: 10px;
-            font: 15px sans-serif;
-            background: lightsteelblue;
-            border: 0px;
+            padding: .5rem;
+            background: #FFFFFF;
+            color: #313639;
+            border: 1px solid #313639;
+            border-radius: 8px;
+            font-size: 1.5rem;
+        }
+
+        div#breadcrumbs {
+            color: antiquewhite;
+            min-height: 230px;
+            max-height: 230px;
+            min-width: 700px;
+            max-width: 700px;
+            font-size: 1.5rem;
+            padding-right: -10%;
+
+        }
+
+        .lasso path {
+            stroke: rgb(117, 185, 230);
+            stroke-width: 2px;
+        }
+
+        .lasso .drawn {
+            fill-opacity: .05;
+        }
+
+        .lasso .loop_close {
+            fill: none;
+            stroke-dasharray: 4, 4;
+        }
+
+        .lasso .origin {
+            fill: #3399FF;
+            fill-opacity: .5;
+        }
+
+        .not_possible {
+            fill: rgb(200, 200, 200);
+        }
+
+        .possible {
+            fill: #EC888C;
+        }
+
+        .selected {
+            fill: steelblue;
+        }
+
+        div.tooltip {
+            position: absolute;
+            text-align: center;
+            padding: .5rem;
+            background: #FFFFFF;
+            color: #313639;
+            border: 1px solid #313639;
             border-radius: 8px;
             pointer-events: none;
+            font-size: 1.5rem;
         }
-    div#breadcrumbs {
-        color:antiquewhite;
-        min-height: 100px;
-        max-height: 100px;
-    }
 
-        </style>
+        div.dust-tooltip {
+            position: absolute;
+            text-align: center;
+            padding: .5rem;
+            background: #FFFFFF;
+            color: #313639;
+            border: 1px solid #313639;
+            border-radius: 8px;
+            font-size: 1.5rem;
+        }
+
+        div#bubbleColorPicker {
+            width: 500px;
+        }
+
+        #controls {
+            font-size: 1.5rem;
+            color: antiquewhite;
+            padding-top: 5%;
+            margin-top: 1%;
+        }
+
+        div.panels {
+            min-width: 700px;
+            max-width: 700px;
+        }
+    </style>
 </head>
+
 <body style="background-color: black;">
 
-    hahaha
-    <div id="breadcrumbs"></div>
-    <div id="chart"></div>
+    <div class="row">
+        <div class="col-lg-8">
+            <div id="chart"></div>
+        </div>
+        <div class="col-lg-4">
+            <div class="row" id="controls">
+                <div class="panel panel-info">
+                    <div class="panel-heading" style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                        <b>Selected
+                            Segments</b></div>
+                    <div class="panel-body" id="breadcrumbs"
+                        style="background-color: rgb(105, 109, 105);opacity: 1; padding-top:1%;padding-left:1%;margin-bottom:-1%;">
+                    </div>
+                </div>
+            </div>
+            <div class="row" id="controls">
+                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                    <label for="bubbleColorPicker" style="padding:1.5%;"><b>Choose Color for Selected
+                            Repositories</b></label>
+                    <input type='color' id="bubbleColorPicker" onchange="changeColorBubbles()" value='#00ff00'
+                        style="width: 100px; height: 50px;" /><br>
+                    <label for="bubbleColorPickerUnselected" style="padding:1.5%;"><b>Choose Color for Unselected
+                            Repositories</b></label>
+                    <input type='color' id="bubbleColorPickerUnselected" onchange="changeColorBubblesUnselected()"
+                        value='#ff0000' style="width: 100px; height: 50px;" />
+                </form>
+            </div>
+            <div class="row" id="controls">
+                <form style="background-color: rgb(105, 109, 105);opacity: 1; padding:1%;">
+                    <label for="bubbleColorPicker" style="padding:1.5%;"><b>Search</b></label>
+                    <input type="text" placeholder="Search By Repositories.." style="width: 600px; height: 50px;" id="searchRepo">
+                    <button type="button" style="cursor: pointer; margin-left: 50%;" onclick="search()">Submit</button>
+                    <p id="result"><b></b></p>
+                    
+                </form>
+            </div>
+        </div>
+    </div>
+
 </body>
